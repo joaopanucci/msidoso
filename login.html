@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSidoso - Sistema de Saúde</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase App (core) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <!-- Firebase Auth -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="assets/css/login.css"/>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <!-- Banner de Configuração Firebase -->
+    <div id="configBanner" class="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-3 text-center z-50 hidden">
+        <div class="max-w-4xl mx-auto">
+            <span class="font-semibold">⚙️ Firebase não configurado:</span>
+            <a href="RESOLUCAO_RAPIDA.md" target="_blank" class="underline font-bold">Resolver em 5 minutos</a>
+            ou ver 
+            <a href="FIREBASE_SETUP.md" target="_blank" class="underline">instruções completas</a>
+        </div>
+    </div>
+
+    <div class="w-full max-w-md">
+        <!-- Logo/Brand -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">MSidoso</h1>
+            <p class="text-gray-600 mt-2">Sistema de Saúde para Idosos</p>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm" class="bg-white rounded-2xl shadow-xl p-8 slide-in">
+            <form class="space-y-6">
+                <div>
+                    <label for="cpf" class="block text-sm font-medium text-gray-700 mb-2">CPF</label>
+                    <input type="text" id="cpf" name="cpf" required maxlength="14"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="000.000.000-00" oninput="formatCPF(this)">
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+                    <div class="relative">
+                        <input type="password" id="password" name="password" required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus pr-12"
+                               placeholder="••••••••">
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                            <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center">
+                        <input type="checkbox" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-sm text-gray-600">Lembrar de mim</span>
+                    </label>
+                    <button type="button" onclick="showForgotPassword()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                        Esqueci minha senha
+                    </button>
+                </div>
+
+                <button type="submit" onclick="handleLogin(event)"
+                        class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 focus:ring-4 focus:ring-blue-200 transition-all duration-200 transform hover:scale-[1.02]">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">Não tem uma conta?</p>
+                <button onclick="showRegister()" class="text-blue-600 hover:text-blue-800 font-medium mt-1">
+                    Cadastre-se gratuitamente
+                </button>
+            </div>
+        </div>
+
+        <!-- Register Form -->
+        <div id="registerForm" class="bg-white rounded-2xl shadow-xl p-8 hidden">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Criar conta</h2>
+                <p class="text-gray-600 mt-2">Preencha os dados para se cadastrar</p>
+            </div>
+
+            <form class="space-y-5">
+                <div>
+                    <label for="fullName" class="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
+                    <input type="text" id="fullName" name="fullName" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="João Silva Santos">
+                </div>
+
+                <div>
+                    <label for="registerCpf" class="block text-sm font-medium text-gray-700 mb-2">CPF</label>
+                    <input type="text" id="registerCpf" name="cpf" required maxlength="14"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="000.000.000-00" oninput="formatCPF(this)">
+                </div>
+
+                <div>
+                    <label for="registerEmail" class="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
+                    <input type="email" id="registerEmail" name="email" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="seu@email.com">
+                </div>
+
+                <div>
+                    <label for="municipality" class="block text-sm font-medium text-gray-700 mb-2">Município</label>
+                    <select id="municipality" name="municipality" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus">
+                        <option value="">Selecione seu município</option>
+                        <option value="Água Clara">Água Clara</option>
+                        <option value="Alcinópolis">Alcinópolis</option>
+                        <option value="Amambai">Amambai</option>
+                        <option value="Anastácio">Anastácio</option>
+                        <option value="Anaurilândia">Anaurilândia</option>
+                        <option value="Angélica">Angélica</option>
+                        <option value="Antônio João">Antônio João</option>
+                        <option value="Aparecida do Taboado">Aparecida do Taboado</option>
+                        <option value="Aquidauana">Aquidauana</option>
+                        <option value="Aral Moreira">Aral Moreira</option>
+                        <option value="Bandeirantes">Bandeirantes</option>
+                        <option value="Bataguassu">Bataguassu</option>
+                        <option value="Batayporã">Batayporã</option>
+                        <option value="Bela Vista">Bela Vista</option>
+                        <option value="Bodoquena">Bodoquena</option>
+                        <option value="Bonito">Bonito</option>
+                        <option value="Brasilândia">Brasilândia</option>
+                        <option value="Caarapó">Caarapó</option>
+                        <option value="Camapuã">Camapuã</option>
+                        <option value="Campo Grande">Campo Grande</option>
+                        <option value="Caracol">Caracol</option>
+                        <option value="Cassilândia">Cassilândia</option>
+                        <option value="Chapadão do Sul">Chapadão do Sul</option>
+                        <option value="Corguinho">Corguinho</option>
+                        <option value="Coronel Sapucaia">Coronel Sapucaia</option>
+                        <option value="Corumbá">Corumbá</option>
+                        <option value="Costa Rica">Costa Rica</option>
+                        <option value="Coxim">Coxim</option>
+                        <option value="Deodápolis">Deodápolis</option>
+                        <option value="Dois Irmãos do Buriti">Dois Irmãos do Buriti</option>
+                        <option value="Douradina">Douradina</option>
+                        <option value="Dourados">Dourados</option>
+                        <option value="Eldorado">Eldorado</option>
+                        <option value="Fátima do Sul">Fátima do Sul</option>
+                        <option value="Figueirão">Figueirão</option>
+                        <option value="Glória de Dourados">Glória de Dourados</option>
+                        <option value="Guia Lopes da Laguna">Guia Lopes da Laguna</option>
+                        <option value="Iguatemi">Iguatemi</option>
+                        <option value="Inocência">Inocência</option>
+                        <option value="Itaporã">Itaporã</option>
+                        <option value="Itaquiraí">Itaquiraí</option>
+                        <option value="Ivinhema">Ivinhema</option>
+                        <option value="Japorã">Japorã</option>
+                        <option value="Jaraguari">Jaraguari</option>
+                        <option value="Jardim">Jardim</option>
+                        <option value="Jateí">Jateí</option>
+                        <option value="Juti">Juti</option>
+                        <option value="Ladário">Ladário</option>
+                        <option value="Laguna Carapã">Laguna Carapã</option>
+                        <option value="Maracaju">Maracaju</option>
+                        <option value="Miranda">Miranda</option>
+                        <option value="Mundo Novo">Mundo Novo</option>
+                        <option value="Naviraí">Naviraí</option>
+                        <option value="Nioaque">Nioaque</option>
+                        <option value="Nova Alvorada do Sul">Nova Alvorada do Sul</option>
+                        <option value="Nova Andradina">Nova Andradina</option>
+                        <option value="Novo Horizonte do Sul">Novo Horizonte do Sul</option>
+                        <option value="Paranaíba">Paranaíba</option>
+                        <option value="Paranhos">Paranhos</option>
+                        <option value="Pedro Gomes">Pedro Gomes</option>
+                        <option value="Ponta Porã">Ponta Porã</option>
+                        <option value="Porto Murtinho">Porto Murtinho</option>
+                        <option value="Ribas do Rio Pardo">Ribas do Rio Pardo</option>
+                        <option value="Rio Brilhante">Rio Brilhante</option>
+                        <option value="Rio Negro">Rio Negro</option>
+                        <option value="Rio Verde de Mato Grosso">Rio Verde de Mato Grosso</option>
+                        <option value="Rochedo">Rochedo</option>
+                        <option value="Santa Rita do Pardo">Santa Rita do Pardo</option>
+                        <option value="São Gabriel do Oeste">São Gabriel do Oeste</option>
+                        <option value="Selvíria">Selvíria</option>
+                        <option value="Sete Quedas">Sete Quedas</option>
+                        <option value="Sidrolândia">Sidrolândia</option>
+                        <option value="Sonora">Sonora</option>
+                        <option value="Tacuru">Tacuru</option>
+                        <option value="Taquarussu">Taquarussu</option>
+                        <option value="Terenos">Terenos</option>
+                        <option value="Três Lagoas">Três Lagoas</option>
+                        <option value="Vicentina">Vicentina</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="profession" class="block text-sm font-medium text-gray-700 mb-2">Área de atuação</label>
+                    <select id="profession" name="profession" required onchange="toggleRegistrationNumber()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus">
+                        <option value="">Selecione sua área</option>
+                        <option value="Médico">Médico</option>
+                        <option value="Enfermeiro">Enfermeiro</option>
+                        <option value="Técnico em Enfermagem">Técnico em Enfermagem</option>
+                        <option value="Fisioterapeuta">Fisioterapeuta</option>
+                        <option value="Nutricionista">Nutricionista</option>
+                        <option value="Psicólogo">Psicólogo</option>
+                        <option value="Assistente Social">Assistente Social</option>
+                        <option value="Farmacêutico">Farmacêutico</option>
+                        <option value="ACS">Agente Comunitário de Saúde (ACS)</option>
+                        <option value="Cuidador">Cuidador de Idosos</option>
+                        <option value="Administrador">Administrador</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+
+                <div id="registrationNumberDiv" class="hidden">
+                    <label for="registrationNumber" class="block text-sm font-medium text-gray-700 mb-2">Número de registro profissional</label>
+                    <input type="text" id="registrationNumber" name="registrationNumber"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="Ex: CRM 12345, COREN 67890">
+                    <p class="text-xs text-gray-500 mt-1">Informe o número do seu conselho profissional</p>
+                </div>
+
+                <div>
+                    <label for="registerPassword" class="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+                    <input type="password" id="registerPassword" name="password" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="••••••••">
+                    <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
+                </div>
+
+                <div>
+                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">Confirmar senha</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="••••••••">
+                </div>
+
+                <div class="flex items-start">
+                    <input type="checkbox" id="terms" required class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1">
+                    <label for="terms" class="ml-2 text-sm text-gray-600">
+                        Concordo com os <a href="#" class="text-blue-600 hover:text-blue-800">Termos de Uso</a> e 
+                        <a href="#" class="text-blue-600 hover:text-blue-800">Política de Privacidade</a>
+                    </label>
+                </div>
+
+                <button type="submit" onclick="handleRegister(event)"
+                        class="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-green-700 hover:to-blue-700 focus:ring-4 focus:ring-green-200 transition-all duration-200 transform hover:scale-[1.02]">
+                    Criar conta
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">Já tem uma conta?</p>
+                <button onclick="showLogin()" class="text-blue-600 hover:text-blue-800 font-medium mt-1">
+                    Fazer login
+                </button>
+            </div>
+        </div>
+
+        <!-- Forgot Password Form -->
+        <div id="forgotForm" class="bg-white rounded-2xl shadow-xl p-8 hidden">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mb-4">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">Esqueceu sua senha?</h2>
+                <p class="text-gray-600 mt-2">Digite seu CPF para receber as instruções de recuperação</p>
+            </div>
+
+            <form class="space-y-6">
+                <div>
+                    <label for="forgotCpf" class="block text-sm font-medium text-gray-700 mb-2">CPF</label>
+                    <input type="text" id="forgotCpf" name="cpf" required maxlength="14"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 input-focus"
+                           placeholder="000.000.000-00" oninput="formatCPF(this)">
+                </div>
+
+                <button type="submit" onclick="handleForgotPassword(event)"
+                        class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 px-4 rounded-lg font-medium hover:from-yellow-600 hover:to-orange-600 focus:ring-4 focus:ring-yellow-200 transition-all duration-200 transform hover:scale-[1.02]">
+                    Enviar instruções
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <button onclick="showLogin()" class="text-blue-600 hover:text-blue-800 font-medium">
+                    ← Voltar ao login
+                </button>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div id="successMessage" class="bg-white rounded-2xl shadow-xl p-8 hidden text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Sucesso!</h2>
+            <p id="successText" class="text-gray-600 mb-6"></p>
+            <button onclick="showLogin()" class="bg-blue-600 text-white py-2 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                Continuar
+            </button>
+        </div>
+    </div>
+
+    
+        <script src="assets/js/app.js" defer></script>
+    <script src="assets/js/login.js" defer></script>
+</body>
+</html>

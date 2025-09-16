@@ -1,0 +1,39 @@
+<!-- Header -->
+<header class="bg-white shadow-lg border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-4">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <a href="dashboard.html" class="flex items-center space-x-2">
+                        <i class="fas fa-heartbeat text-2xl text-blue-600"></i>
+                        <h1 class="text-2xl font-bold text-gray-900">MSIdoso</h1>
+                    </a>
+                </div>
+                <nav id="main-nav" class="flex items-center space-x-6 ml-8">
+                    <a href="dashboard.html"
+                        class="text-gray-600 hover:text-blue-600 font-medium transition-colors nav-item">Dashboard</a>
+                    <a href="usuarios.html"
+                        class="text-gray-600 hover:text-blue-600 font-medium transition-colors nav-item">Usuários</a>
+                    <a href="pacientes.html"
+                        class="text-gray-600 hover:text-blue-600 font-medium transition-colors nav-item">Pacientes</a>
+                    <a href="avaliacoes.html"
+                        class="text-gray-600 hover:text-blue-600 font-medium transition-colors nav-item">Avaliações</a>
+                    <a href="indicevulnerabilidade.html"
+                        class="text-gray-600 hover:text-blue-600 font-medium transition-colors nav-item">Índice de
+                        Vulnerabilidade</a>
+                </nav>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="user-info" class="text-right hidden">
+                    <p id="userDisplayName" class="text-sm font-medium text-gray-900">Carregando...</p>
+                    <p id="userRole" class="text-xs text-gray-500">Profissional</p>
+                </div>
+                <button id="logoutBtn"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 hidden">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sair</span>
+                    </a>
+            </div>
+        </div>
+    </div>
+</header>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Pacientes - MSidoso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase App (core) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <!-- Firebase Auth -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="assets/css/pacientes.css" />
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div id="header-placeholder"></div>
+    <main class="p-8">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold mb-2">Gerenciar Pacientes</h1>
+                <p class="text-gray-700">Aqui você poderá visualizar, editar e remover pacientes do sistema.</p>
+            </div>
+            <button onclick="showAddPacienteModal()"
+                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                + Adicionar Paciente
+            </button>
+        </div>
+        <div id="pacientesList" class="mt-6"></div>
+
+        <!-- Modal de adicionar paciente -->
+        <div id="addPacienteModal"
+            class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl max-h-screen overflow-y-auto">
+                <h2 class="text-xl font-bold mb-4">Adicionar Paciente</h2>
+                <form id="addPacienteForm" class="space-y-6">
+                    <!-- Dados Pessoais -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Dados Pessoais</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Nome Completo *</label>
+                                <input type="text" id="addPacienteName" required
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">CPF *</label>
+                                <input type="text" id="addPacienteCpf" required maxlength="14"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="000.000.000-00" oninput="formatCPF(this)">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Data de Nascimento *</label>
+                                <input type="date" id="addPacienteBirth" required
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Sexo *</label>
+                                <select id="addPacienteSex" required
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Estado Civil</label>
+                                <select id="addPacienteMaritalStatus"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="Solteiro(a)">Solteiro(a)</option>
+                                    <option value="Casado(a)">Casado(a)</option>
+                                    <option value="União Estável">União Estável</option>
+                                    <option value="Divorciado(a)">Divorciado(a)</option>
+                                    <option value="Viúvo(a)">Viúvo(a)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">RG</label>
+                                <input type="text" id="addPacienteRg"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="12.345.678-9">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contato -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Contato</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Telefone Principal</label>
+                                <input type="tel" id="addPacientePhone"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="(67) 99999-9999">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Telefone Secundário</label>
+                                <input type="tel" id="addPacientePhone2"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="(67) 99999-9999">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">E-mail</label>
+                                <input type="email" id="addPacienteEmail"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="email@exemplo.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Contato de Emergência</label>
+                                <input type="text" id="addPacienteEmergencyContact"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Nome e telefone">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Endereço -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Endereço</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">CEP</label>
+                                <input type="text" id="addPacienteCep"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="79000-000" maxlength="9">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium">Logradouro</label>
+                                <input type="text" id="addPacienteAddress"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Rua, Avenida, etc.">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Número</label>
+                                <input type="text" id="addPacienteNumber"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="123">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Complemento</label>
+                                <input type="text" id="addPacienteComplement"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Apt, Bloco, etc.">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Bairro</label>
+                                <input type="text" id="addPacienteNeighborhood"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Município *</label>
+                                <select id="addPacienteMunicipality" required
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione o município</option>
+                                    <option value="Água Clara">Água Clara</option>
+                                    <option value="Alcinópolis">Alcinópolis</option>
+                                    <option value="Amambai">Amambai</option>
+                                    <option value="Anastácio">Anastácio</option>
+                                    <option value="Anaurilândia">Anaurilândia</option>
+                                    <option value="Angélica">Angélica</option>
+                                    <option value="Antônio João">Antônio João</option>
+                                    <option value="Aparecida do Taboado">Aparecida do Taboado</option>
+                                    <option value="Aquidauana">Aquidauana</option>
+                                    <option value="Aral Moreira">Aral Moreira</option>
+                                    <option value="Bandeirantes">Bandeirantes</option>
+                                    <option value="Bataguassu">Bataguassu</option>
+                                    <option value="Batayporã">Batayporã</option>
+                                    <option value="Bela Vista">Bela Vista</option>
+                                    <option value="Bodoquena">Bodoquena</option>
+                                    <option value="Bonito">Bonito</option>
+                                    <option value="Brasilândia">Brasilândia</option>
+                                    <option value="Caarapó">Caarapó</option>
+                                    <option value="Camapuã">Camapuã</option>
+                                    <option value="Campo Grande">Campo Grande</option>
+                                    <option value="Caracol">Caracol</option>
+                                    <option value="Cassilândia">Cassilândia</option>
+                                    <option value="Chapadão do Sul">Chapadão do Sul</option>
+                                    <option value="Corguinho">Corguinho</option>
+                                    <option value="Coronel Sapucaia">Coronel Sapucaia</option>
+                                    <option value="Corumbá">Corumbá</option>
+                                    <option value="Costa Rica">Costa Rica</option>
+                                    <option value="Coxim">Coxim</option>
+                                    <option value="Deodápolis">Deodápolis</option>
+                                    <option value="Dois Irmãos do Buriti">Dois Irmãos do Buriti</option>
+                                    <option value="Douradina">Douradina</option>
+                                    <option value="Dourados">Dourados</option>
+                                    <option value="Eldorado">Eldorado</option>
+                                    <option value="Fátima do Sul">Fátima do Sul</option>
+                                    <option value="Figueirão">Figueirão</option>
+                                    <option value="Glória de Dourados">Glória de Dourados</option>
+                                    <option value="Guia Lopes da Laguna">Guia Lopes da Laguna</option>
+                                    <option value="Iguatemi">Iguatemi</option>
+                                    <option value="Inocência">Inocência</option>
+                                    <option value="Itaporã">Itaporã</option>
+                                    <option value="Itaquiraí">Itaquiraí</option>
+                                    <option value="Ivinhema">Ivinhema</option>
+                                    <option value="Japorã">Japorã</option>
+                                    <option value="Jaraguari">Jaraguari</option>
+                                    <option value="Jardim">Jardim</option>
+                                    <option value="Jateí">Jateí</option>
+                                    <option value="Juti">Juti</option>
+                                    <option value="Ladário">Ladário</option>
+                                    <option value="Laguna Carapã">Laguna Carapã</option>
+                                    <option value="Maracaju">Maracaju</option>
+                                    <option value="Miranda">Miranda</option>
+                                    <option value="Mundo Novo">Mundo Novo</option>
+                                    <option value="Naviraí">Naviraí</option>
+                                    <option value="Nioaque">Nioaque</option>
+                                    <option value="Nova Alvorada do Sul">Nova Alvorada do Sul</option>
+                                    <option value="Nova Andradina">Nova Andradina</option>
+                                    <option value="Novo Horizonte do Sul">Novo Horizonte do Sul</option>
+                                    <option value="Paranaíba">Paranaíba</option>
+                                    <option value="Paranhos">Paranhos</option>
+                                    <option value="Pedro Gomes">Pedro Gomes</option>
+                                    <option value="Ponta Porã">Ponta Porã</option>
+                                    <option value="Porto Murtinho">Porto Murtinho</option>
+                                    <option value="Ribas do Rio Pardo">Ribas do Rio Pardo</option>
+                                    <option value="Rio Brilhante">Rio Brilhante</option>
+                                    <option value="Rio Negro">Rio Negro</option>
+                                    <option value="Rio Verde de Mato Grosso">Rio Verde de Mato Grosso</option>
+                                    <option value="Rochedo">Rochedo</option>
+                                    <option value="Santa Rita do Pardo">Santa Rita do Pardo</option>
+                                    <option value="São Gabriel do Oeste">São Gabriel do Oeste</option>
+                                    <option value="Selvíria">Selvíria</option>
+                                    <option value="Sete Quedas">Sete Quedas</option>
+                                    <option value="Sidrolândia">Sidrolândia</option>
+                                    <option value="Sonora">Sonora</option>
+                                    <option value="Tacuru">Tacuru</option>
+                                    <option value="Taquarussu">Taquarussu</option>
+                                    <option value="Terenos">Terenos</option>
+                                    <option value="Três Lagoas">Três Lagoas</option>
+                                    <option value="Vicentina">Vicentina</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">UF</label>
+                                <input type="text" id="addPacienteState" value="MS" readonly
+                                    class="w-full border rounded px-3 py-2 bg-gray-100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informações Médicas -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Informações Médicas</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Cartão SUS</label>
+                                <input type="text" id="addPacienteSus"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="000 0000 0000 0000">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Plano de Saúde</label>
+                                <input type="text" id="addPacienteHealthPlan"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Nome do plano">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Tipo Sanguíneo</label>
+                                <select id="addPacienteBloodType"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Peso Atual (kg)</label>
+                                <input type="number" id="addPacienteWeight" step="0.1"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="70.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Altura (cm)</label>
+                                <input type="number" id="addPacienteHeight"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="170">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Grau de Dependência</label>
+                                <select id="addPacienteDependency"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="Independente">Independente</option>
+                                    <option value="Parcialmente Dependente">Parcialmente Dependente</option>
+                                    <option value="Totalmente Dependente">Totalmente Dependente</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Histórico Médico -->
+                    <div class="pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Histórico Médico</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium">Doenças Crônicas</label>
+                                <textarea id="addPacienteChronicDiseases" rows="3"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Diabetes, Hipertensão, etc."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Medicamentos em Uso</label>
+                                <textarea id="addPacienteMedications" rows="3"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Lista de medicamentos atuais"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Alergias</label>
+                                <textarea id="addPacienteAllergies" rows="2"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Alergias conhecidas"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Cirurgias Anteriores</label>
+                                <textarea id="addPacienteSurgeries" rows="2"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Histórico de cirurgias"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Observações Gerais</label>
+                                <textarea id="addPacienteNotes" rows="3"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Informações adicionais relevantes"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-4 border-t">
+                        <button type="button" onclick="closeAddPacienteModal()"
+                            class="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancelar</button>
+                        <button type="submit"
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">Salvar
+                            Paciente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- Modal de edição -->
+        <div id="editModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl max-h-screen overflow-y-auto">
+                <h2 class="text-xl font-bold mb-4">Editar Paciente</h2>
+                <form id="editPacienteForm" class="space-y-6">
+                    <input type="hidden" id="editPacienteId">
+
+                    <!-- Dados Pessoais -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Dados Pessoais</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Nome Completo</label>
+                                <input type="text" id="editPacienteName"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">CPF</label>
+                                <input type="text" id="editPacienteCpf"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Data de Nascimento</label>
+                                <input type="date" id="editPacienteBirth"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Sexo</label>
+                                <select id="editPacienteSex"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Estado Civil</label>
+                                <select id="editPacienteMaritalStatus"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="Solteiro(a)">Solteiro(a)</option>
+                                    <option value="Casado(a)">Casado(a)</option>
+                                    <option value="União Estável">União Estável</option>
+                                    <option value="Divorciado(a)">Divorciado(a)</option>
+                                    <option value="Viúvo(a)">Viúvo(a)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">RG</label>
+                                <input type="text" id="editPacienteRg"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contato -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Contato</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Telefone Principal</label>
+                                <input type="tel" id="editPacientePhone"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Telefone Secundário</label>
+                                <input type="tel" id="editPacientePhone2"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">E-mail</label>
+                                <input type="email" id="editPacienteEmail"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Contato de Emergência</label>
+                                <input type="text" id="editPacienteEmergencyContact"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Endereço -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Endereço</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">CEP</label>
+                                <input type="text" id="editPacienteCep"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium">Logradouro</label>
+                                <input type="text" id="editPacienteAddress"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Número</label>
+                                <input type="text" id="editPacienteNumber"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Complemento</label>
+                                <input type="text" id="editPacienteComplement"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Bairro</label>
+                                <input type="text" id="editPacienteNeighborhood"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Município</label>
+                                <input type="text" id="editPacienteMunicipality"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">UF</label>
+                                <input type="text" id="editPacienteState"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informações Médicas -->
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Informações Médicas</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Cartão SUS</label>
+                                <input type="text" id="editPacienteSus"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Plano de Saúde</label>
+                                <input type="text" id="editPacienteHealthPlan"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Tipo Sanguíneo</label>
+                                <select id="editPacienteBloodType"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Peso Atual (kg)</label>
+                                <input type="number" id="editPacienteWeight" step="0.1"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Altura (cm)</label>
+                                <input type="number" id="editPacienteHeight"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Grau de Dependência</label>
+                                <select id="editPacienteDependency"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione</option>
+                                    <option value="Independente">Independente</option>
+                                    <option value="Parcialmente Dependente">Parcialmente Dependente</option>
+                                    <option value="Totalmente Dependente">Totalmente Dependente</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Histórico Médico -->
+                    <div class="pb-4">
+                        <h3 class="text-lg font-semibold mb-3 text-blue-800">Histórico Médico</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium">Doenças Crônicas</label>
+                                <textarea id="editPacienteChronicDiseases" rows="3"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Medicamentos em Uso</label>
+                                <textarea id="editPacienteMedications" rows="3"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Alergias</label>
+                                <textarea id="editPacienteAllergies" rows="2"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Cirurgias Anteriores</label>
+                                <textarea id="editPacienteSurgeries" rows="2"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Observações Gerais</label>
+                                <textarea id="editPacienteNotes" rows="3"
+                                    class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-4 border-t">
+                        <button type="button" onclick="closeEditModal()"
+                            class="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">Cancelar</button>
+                        <button type="submit"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Salvar
+                            Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+    <script src="assets/js/app.js" defer></script>
+    <script src="assets/js/pacientes.js" defer></script>
+    <script src="assets/js/main.js" defer></script>
+</body>
+
+</html>

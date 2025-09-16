@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSIdoso - Sistema de Indicadores do Idoso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    
+    <!-- Firebase compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <link rel="stylesheet" href="assets/css/index.css"/>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 fixed w-full top-0 z-50">
+        <div class="flex items-center justify-between px-6 py-4">
+            <div class="flex items-center space-x-4">
+                <button id="sidebarToggle" class="lg:hidden text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 ms-green rounded-lg flex items-center justify-center">
+                        <i class="fas fa-user-friends text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">MSIdoso</h1>
+                        <p class="text-sm text-gray-600">Sistema de Indicadores do Idoso - MS</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <button class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                            <span class="text-white text-sm font-medium">AD</span>
+                        </div>
+                        <span class="hidden md:block">Admin Sistema</span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-16 h-full w-64 bg-white shadow-lg transform -translate-x-full lg:translate-x-0 sidebar-transition z-40">
+        <nav class="p-4 space-y-2">
+            <a href="#" onclick="showSection('dashboard')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 bg-blue-50 text-blue-700">
+                <i class="fas fa-chart-dashboard w-5"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" onclick="showSection('ivcf20')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-heart-pulse w-5"></i>
+                <span>IVCF-20</span>
+            </a>
+            <a href="#" onclick="showSection('ivsf10')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-stethoscope w-5"></i>
+                <span>IVSF-10</span>
+            </a>
+            <a href="#" onclick="showSection('indicators')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-chart-line w-5"></i>
+                <span>Indicadores</span>
+            </a>
+            <a href="#" onclick="showSection('patients')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-users w-5"></i>
+                <span>Pacientes</span>
+            </a>
+            <a href="#" onclick="showSection('reports')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-file-chart-line w-5"></i>
+                <span>Relatórios</span>
+            </a>
+            <a href="#" onclick="showSection('rbac')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-shield-alt w-5"></i>
+                <span>Controle de Acesso</span>
+            </a>
+            <a href="#" onclick="showSection('settings')" class="nav-item flex items-center space-x-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-cog w-5"></i>
+                <span>Configurações</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="lg:ml-64 pt-16 min-h-screen">
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Dashboard - MSIdoso</h2>
+                <p class="text-gray-600">Visão geral dos indicadores de saúde do idoso em Mato Grosso do Sul</p>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total de Idosos</p>
+                            <p class="text-2xl font-bold text-gray-900">12,847</p>
+                            <p class="text-sm text-green-600">+5.2% este mês</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">IVCF-20 Aplicados</p>
+                            <p class="text-2xl font-bold text-gray-900">8,234</p>
+                            <p class="text-sm text-green-600">+12.1% este mês</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-heart-pulse text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">IVSF-10 Aplicados</p>
+                            <p class="text-2xl font-bold text-gray-900">6,891</p>
+                            <p class="text-sm text-yellow-600">+8.7% este mês</p>
+                        </div>
+                        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-stethoscope text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Municípios Ativos</p>
+                            <p class="text-2xl font-bold text-gray-900">79</p>
+                            <p class="text-sm text-blue-600">100% cobertura</p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-map-marker-alt text-purple-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Evolução Mensal - IVCF-20</h3>
+                    <canvas id="ivcfChart" width="400" height="200"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Distribuição por Região - IVSF-10</h3>
+                    <canvas id="ivsfChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Atividades Recentes</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-plus text-blue-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">Novo paciente cadastrado</p>
+                            <p class="text-xs text-gray-600">Maria Silva, 72 anos - Campo Grande</p>
+                        </div>
+                        <span class="text-xs text-gray-500">2 min atrás</span>
+                    </div>
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-green-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">IVCF-20 aplicado</p>
+                            <p class="text-xs text-gray-600">João Santos - UBS Centro</p>
+                        </div>
+                        <span class="text-xs text-gray-500">15 min atrás</span>
+                    </div>
+                    <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-file text-yellow-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">Relatório mensal gerado</p>
+                            <p class="text-xs text-gray-600">Indicadores de Outubro 2024</p>
+                        </div>
+                        <span class="text-xs text-gray-500">1 hora atrás</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IVCF-20 Section -->
+        <div id="ivcf20-section" class="p-6 hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">IVCF-20 - Índice de Vulnerabilidade Clínico Funcional</h2>
+                <p class="text-gray-600">Avaliação da vulnerabilidade clínico-funcional em 20 questões</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Nova Avaliação IVCF-20</h3>
+                    <button onclick="startIVCF20()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Nova Avaliação
+                    </button>
+                </div>
+
+                <div id="ivcf20-form" class="hidden">
+                    <form class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Paciente</label>
+                                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Digite o nome completo">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Idade</label>
+                                <input type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Idade em anos">
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h4 class="text-md font-semibold text-gray-900">Questões IVCF-20</h4>
+                            
+                            <div class="space-y-3">
+                                <div class="p-4 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-900 mb-3">1. Você se sente triste ou deprimido?</p>
+                                    <div class="flex space-x-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="q1" value="0" class="mr-2">
+                                            <span class="text-sm">Não (0)</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="q1" value="1" class="mr-2">
+                                            <span class="text-sm">Sim (1)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-900 mb-3">2. Você tem dificuldade para caminhar?</p>
+                                    <div class="flex space-x-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="q2" value="0" class="mr-2">
+                                            <span class="text-sm">Não (0)</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="q2" value="1" class="mr-2">
+                                            <span class="text-sm">Sim (1)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-900 mb-3">3. Você tem problemas de memória?</p>
+                                    <div class="flex space-x-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="q3" value="0" class="mr-2">
+                                            <span class="text-sm">Não (0)</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="q3" value="1" class="mr-2">
+                                            <span class="text-sm">Sim (1)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="text-center text-gray-500 text-sm py-4">
+                                    ... (17 questões adicionais seriam exibidas aqui)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-4">
+                            <button type="button" onclick="calculateIVCF20()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                Calcular Resultado
+                            </button>
+                            <button type="button" onclick="cancelIVCF20()" class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="ivcf20-result" class="hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-blue-900 mb-2">Resultado da Avaliação</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-blue-600" id="ivcf-score">0</p>
+                                <p class="text-sm text-gray-600">Pontuação Total</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-lg font-semibold" id="ivcf-classification">Baixo Risco</p>
+                                <p class="text-sm text-gray-600">Classificação</p>
+                            </div>
+                            <div class="text-center">
+                                <button onclick="saveIVCF20()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                    Salvar Avaliação
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent IVCF-20 Assessments -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Avaliações Recentes</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Paciente</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Idade</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Pontuação</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Classificação</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Data</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">Maria Silva</td>
+                                <td class="py-3 px-4">72</td>
+                                <td class="py-3 px-4">
+                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">3</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Baixo Risco</span>
+                                </td>
+                                <td class="py-3 px-4">15/11/2024</td>
+                                <td class="py-3 px-4">
+                                    <button class="text-blue-600 hover:text-blue-800 mr-2">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">João Santos</td>
+                                <td class="py-3 px-4">68</td>
+                                <td class="py-3 px-4">
+                                    <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">8</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Risco Moderado</span>
+                                </td>
+                                <td class="py-3 px-4">14/11/2024</td>
+                                <td class="py-3 px-4">
+                                    <button class="text-blue-600 hover:text-blue-800 mr-2">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- IVSF-10 Section -->
+        <div id="ivsf10-section" class="p-6 hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">IVSF-10 - Índice de Vulnerabilidade Social e Familiar</h2>
+                <p class="text-gray-600">Avaliação da vulnerabilidade social e familiar em 10 questões</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Nova Avaliação IVSF-10</h3>
+                    <button onclick="startIVSF10()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Nova Avaliação
+                    </button>
+                </div>
+
+                <div id="ivsf10-form" class="hidden">
+                    <form class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Paciente</label>
+                                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Digite o nome completo">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Renda Familiar</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    <option>Até 1 salário mínimo</option>
+                                    <option>1-2 salários mínimos</option>
+                                    <option>2-3 salários mínimos</option>
+                                    <option>Acima de 3 salários mínimos</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h4 class="text-md font-semibold text-gray-900">Questões IVSF-10</h4>
+                            
+                            <div class="space-y-3">
+                                <div class="p-4 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-900 mb-3">1. Você mora sozinho?</p>
+                                    <div class="flex space-x-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="ivsf_q1" value="0" class="mr-2">
+                                            <span class="text-sm">Não (0)</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="ivsf_q1" value="2" class="mr-2">
+                                            <span class="text-sm">Sim (2)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-900 mb-3">2. Você tem apoio familiar adequado?</p>
+                                    <div class="flex space-x-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="ivsf_q2" value="0" class="mr-2">
+                                            <span class="text-sm">Sim (0)</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="ivsf_q2" value="1" class="mr-2">
+                                            <span class="text-sm">Não (1)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="text-center text-gray-500 text-sm py-4">
+                                    ... (8 questões adicionais seriam exibidas aqui)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-4">
+                            <button type="button" onclick="calculateIVSF10()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                Calcular Resultado
+                            </button>
+                            <button type="button" onclick="cancelIVSF10()" class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- IVSF-10 Statistics -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Distribuição de Risco</h4>
+                    <canvas id="ivsfRiskChart" width="300" height="200"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Principais Fatores</h4>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Isolamento Social</span>
+                            <span class="text-sm font-medium">34%</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Baixa Renda</span>
+                            <span class="text-sm font-medium">28%</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Falta de Suporte</span>
+                            <span class="text-sm font-medium">22%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Ações Recomendadas</h4>
+                    <div class="space-y-2">
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <p class="text-sm font-medium text-yellow-800">Visitas Domiciliares</p>
+                            <p class="text-xs text-yellow-600">Para casos de alto risco</p>
+                        </div>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p class="text-sm font-medium text-blue-800">Grupos de Convivência</p>
+                            <p class="text-xs text-blue-600">Reduzir isolamento social</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RBAC Section -->
+        <div id="rbac-section" class="p-6 hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Controle de Acesso (RBAC)</h2>
+                <p class="text-gray-600">Gerenciamento de usuários, perfis e permissões do sistema</p>
+            </div>
+
+            <!-- Users Management -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Usuários do Sistema</h3>
+                        <button onclick="showAddUser()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Novo Usuário
+                        </button>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-sm font-medium">AD</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Admin Sistema</p>
+                                    <p class="text-xs text-gray-600">admin@msidoso.ms.gov.br</p>
+                                </div>
+                            </div>
+                            <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Super Admin</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-sm font-medium">MS</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Maria Santos</p>
+                                    <p class="text-xs text-gray-600">maria.santos@saude.ms.gov.br</p>
+                                </div>
+                            </div>
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Coordenador</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-sm font-medium">JS</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">João Silva</p>
+                                    <p class="text-xs text-gray-600">joao.silva@ubs.ms.gov.br</p>
+                                </div>
+                            </div>
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Profissional</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Perfis de Acesso</h3>
+                    <div class="space-y-4">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-gray-900">Super Administrador</h4>
+                                <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Nível 1</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Acesso total ao sistema, incluindo configurações e RBAC</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Todos os módulos</span>
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Gerenciar usuários</span>
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Configurações</span>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-gray-900">Coordenador Regional</h4>
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Nível 2</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Acesso aos dados regionais e relatórios gerenciais</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Dashboard</span>
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Relatórios</span>
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Indicadores</span>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-gray-900">Profissional de Saúde</h4>
+                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Nível 3</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Aplicação de avaliações e cadastro de pacientes</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">IVCF-20</span>
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">IVSF-10</span>
+                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Pacientes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Permissions Matrix -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Matriz de Permissões</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Módulo/Funcionalidade</th>
+                                <th class="text-center py-3 px-4 font-medium text-gray-900">Super Admin</th>
+                                <th class="text-center py-3 px-4 font-medium text-gray-900">Coordenador</th>
+                                <th class="text-center py-3 px-4 font-medium text-gray-900">Profissional</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">Dashboard</td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">IVCF-20 - Aplicar</td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">IVSF-10 - Aplicar</td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">Relatórios Gerenciais</td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-times text-red-600"></i></td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">Gerenciar Usuários</td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-times text-red-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-times text-red-600"></i></td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="py-3 px-4">Configurações do Sistema</td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-check text-green-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-times text-red-600"></i></td>
+                                <td class="text-center py-3 px-4"><i class="fas fa-times text-red-600"></i></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Other sections would be implemented similarly -->
+        <div id="indicators-section" class="p-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Indicadores de Saúde do Idoso</h2>
+            <p class="text-gray-600">Módulo em desenvolvimento...</p>
+        </div>
+
+        <div id="patients-section" class="p-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Cadastro de Pacientes</h2>
+            <p class="text-gray-600">Módulo em desenvolvimento...</p>
+        </div>
+
+        <div id="reports-section" class="p-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Relatórios</h2>
+            <p class="text-gray-600">Módulo em desenvolvimento...</p>
+        </div>
+
+        <div id="settings-section" class="p-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Configurações do Sistema</h2>
+            <p class="text-gray-600">Módulo em desenvolvimento...</p>
+        </div>
+    </main>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Adicionar Novo Usuário</h3>
+            <form class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome Completo</label>
+                    <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Perfil de Acesso</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option>Profissional de Saúde</option>
+                        <option>Coordenador Regional</option>
+                        <option>Super Administrador</option>
+                    </select>
+                </div>
+                <div class="flex space-x-4 pt-4">
+                    <button type="button" onclick="saveUser()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Salvar
+                    </button>
+                    <button type="button" onclick="closeAddUser()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    
+        <script src="assets/js/app.js" defer></script>
+    <script src="assets/js/index.js" defer></script>
+</body>
+</html>

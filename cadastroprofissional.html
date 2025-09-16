@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSIdoso - Sistema de Avaliação do Idoso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+
+
+    <!-- Firebase compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <link rel="stylesheet" href="assets/css/cadastroprofissional.css" />
+</head>
+
+<body class="bg-gray-50 font-sans" x-data="msIdosoApp()">
+    <div id="header-placeholder"></div>
+    <!-- Loading Overlay -->
+    <div x-show="loading" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span class="text-gray-700">Carregando...</span>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+        class="fixed left-0 top-16 h-full w-64 bg-white shadow-lg transform lg:translate-x-0 transition-transform duration-300 z-30">
+        <nav class="p-4 space-y-2">
+            <template x-for="item in navigation" :key="item.id">
+                <a href="#" @click="setActiveSection(item.id)"
+                    :class="activeSection === item.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'"
+                    class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors">
+                    <i :class="item.icon" class="w-5"></i>
+                    <span x-text="item.name"></span>
+                    <span x-show="item.badge" x-text="item.badge"
+                        class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full"></span>
+                </a>
+            </template>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="lg:ml-64 pt-16 min-h-screen">
+        <!-- Dashboard Section -->
+        <div x-show="activeSection === 'dashboard'" class="p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Dashboard</h2>
+                <p class="text-gray-600">Visão geral das avaliações e indicadores de saúde do idoso</p>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Filtros</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
+                        <select x-model="filters.period"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="30">Últimos 30 dias</option>
+                            <option value="90">Últimos 3 meses</option>
+                            <option value="365">Último ano</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Instrumento</label>
+                        <select x-model="filters.instrument"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Todos</option>
+                            <option value="IVCF20">IVCF-20</option>
+                            <option value="IVSF10">IVSF-10</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Classificação</label>
+                        <select x-model="filters.classification"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Todas</option>
+                            <option value="baixo">Baixo Risco</option>
+                            <option value="moderado">Risco Moderado</option>
+                            <option value="alto">Alto Risco</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button @click="applyFilters()"
+                            class="w-full bg-ms-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-filter mr-2"></i>Aplicar Filtros
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <template x-for="stat in stats" :key="stat.id">
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600" x-text="stat.label"></p>
+                                <p class="text-2xl font-bold text-gray-900" x-text="stat.value"></p>
+                                <p class="text-sm" :class="stat.trend >= 0 ? 'text-green-600' : 'text-red-600'">
+                                    <i :class="stat.trend >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                                    <span x-text="Math.abs(stat.trend) + '% este mês'"></span>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" :class="stat.bgColor">
+                                <i :class="stat.icon + ' text-xl'" :class="stat.iconColor"></i>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Evolução das Avaliações</h3>
+                    <canvas id="evaluationsChart" width="400" height="200"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Distribuição por Classificação</h3>
+                    <canvas id="classificationChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- MS Map (ADM SES only) -->
+            <div x-show="user.role === 'ADM_SES'" class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Mapa de Vulnerabilidade - Mato Grosso do Sul</h3>
+                <div class="relative bg-gray-100 rounded-lg h-96 flex items-center justify-center">
+                    <div class="text-center">
+                        <i class="fas fa-map text-6xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">Mapa interativo com dados de vulnerabilidade por município</p>
+                        <p class="text-sm text-gray-500 mt-2">Implementação com dados geográficos do IBGE</p>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 bg-green-500 rounded"></div>
+                            <span class="text-sm text-gray-600">Baixa Vulnerabilidade</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 bg-yellow-500 rounded"></div>
+                            <span class="text-sm text-gray-600">Vulnerabilidade Moderada</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 bg-red-500 rounded"></div>
+                            <span class="text-sm text-gray-600">Alta Vulnerabilidade</span>
+                        </div>
+                    </div>
+                    <button class="bg-ms-green text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                        <i class="fas fa-download mr-2"></i>Exportar Mapa
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Activities -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Atividades Recentes</h3>
+                <div class="space-y-4">
+                    <template x-for="activity in recentActivities" :key="activity.id">
+                        <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                                :class="activity.bgColor">
+                                <i :class="activity.icon" :class="activity.iconColor"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900" x-text="activity.title"></p>
+                                <p class="text-xs text-gray-600" x-text="activity.description"></p>
+                            </div>
+                            <span class="text-xs text-gray-500" x-text="activity.time"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- IVCF-20 Section -->
+        <div x-show="activeSection === 'ivcf20'" class="p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">IVCF-20</h2>
+                <p class="text-gray-600">Índice de Vulnerabilidade Clínico Funcional - 20 questões</p>
+            </div>
+
+            <!-- New Evaluation Form -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Nova Avaliação IVCF-20</h3>
+                    <button @click="startNewEvaluation('IVCF20')"
+                        class="bg-ms-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Nova Avaliação
+                    </button>
+                </div>
+
+                <div x-show="showEvaluationForm && evaluationType === 'IVCF20'">
+                    <form @submit.prevent="saveEvaluation()" class="space-y-6">
+                        <!-- Patient Info -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Paciente *</label>
+                                <input x-model="evaluation.patient_name" type="text" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">CPF *</label>
+                                <input x-model="evaluation.patient_cpf" type="text" required x-mask="999.999.999-99"
+                                    placeholder="000.000.000-00"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cpf-mask">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data de Nascimento *</label>
+                                <input x-model="evaluation.patient_birth_date" type="date" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- IVCF-20 Questions -->
+                        <div class="space-y-4">
+                            <h4 class="text-md font-semibold text-gray-900">Questões IVCF-20</h4>
+                            <template x-for="(question, index) in ivcf20Questions" :key="index">
+                                <div class="p-4 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-900 mb-3"
+                                        x-text="`${index + 1}. ${question.text}`"></p>
+                                    <div class="flex space-x-4">
+                                        <template x-for="option in question.options" :key="option.value">
+                                            <label class="flex items-center">
+                                                <input type="radio" :name="`q${index}`" :value="option.value"
+                                                    x-model="evaluation.answers[index]" class="mr-2">
+                                                <span class="text-sm" x-text="option.label"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex space-x-4">
+                            <button type="button" @click="saveAsDraft()"
+                                class="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors">
+                                <i class="fas fa-save mr-2"></i>Salvar Rascunho
+                            </button>
+                            <button type="submit"
+                                class="bg-ms-green text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-check mr-2"></i>Finalizar Avaliação
+                            </button>
+                            <button type="button" @click="cancelEvaluation()"
+                                class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Evaluations List -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Avaliações IVCF-20</h3>
+                    <div class="flex space-x-2">
+                        <button @click="exportEvaluations('pdf')"
+                            class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                            <i class="fas fa-file-pdf mr-2"></i>PDF
+                        </button>
+                        <button @click="exportEvaluations('excel')"
+                            class="bg-ms-green text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-file-excel mr-2"></i>Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Paciente</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">CPF</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Pontuação</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Classificação</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Status</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Data</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="evaluation in evaluations.ivcf20" :key="evaluation.id">
+                                <tr class="border-b border-gray-100">
+                                    <td class="py-3 px-4" x-text="evaluation.patient_name"></td>
+                                    <td class="py-3 px-4" x-text="evaluation.patient_cpf"></td>
+                                    <td class="py-3 px-4">
+                                        <span class="px-2 py-1 rounded-full text-xs"
+                                            :class="getScoreColor(evaluation.total_score, 'IVCF20')"
+                                            x-text="evaluation.total_score"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span class="px-2 py-1 rounded-full text-xs"
+                                            :class="getClassificationColor(evaluation.classification)"
+                                            x-text="evaluation.classification"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span class="px-2 py-1 rounded-full text-xs"
+                                            :class="evaluation.status === 'finalizada' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'"
+                                            x-text="evaluation.status"></span>
+                                    </td>
+                                    <td class="py-3 px-4" x-text="formatDate(evaluation.created_at)"></td>
+                                    <td class="py-3 px-4">
+                                        <button @click="viewEvaluation(evaluation)"
+                                            class="text-blue-600 hover:text-blue-800 mr-2">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button x-show="evaluation.status === 'rascunho'"
+                                            @click="editEvaluation(evaluation)"
+                                            class="text-green-600 hover:text-green-800 mr-2">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button @click="generatePDF(evaluation)"
+                                            class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- IVSF-10 Section -->
+        <div x-show="activeSection === 'ivsf10'" class="p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">IVSF-10</h2>
+                <p class="text-gray-600">Índice de Vulnerabilidade Social e Familiar - 10 questões</p>
+            </div>
+
+            <!-- Similar structure to IVCF-20 but with IVSF-10 specific content -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Nova Avaliação IVSF-10</h3>
+                    <button @click="startNewEvaluation('IVSF10')"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Nova Avaliação
+                    </button>
+                </div>
+
+                <div x-show="showEvaluationForm && evaluationType === 'IVSF10'">
+                    <form @submit.prevent="saveEvaluation()" class="space-y-6">
+                        <!-- Patient Info (same as IVCF-20) -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Paciente *</label>
+                                <input x-model="evaluation.patient_name" type="text" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">CPF *</label>
+                                <input x-model="evaluation.patient_cpf" type="text" required x-mask="999.999.999-99"
+                                    placeholder="000.000.000-00"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cpf-mask">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data de Nascimento *</label>
+                                <input x-model="evaluation.patient_birth_date" type="date" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            </div>
+                        </div>
+
+                        <!-- IVSF-10 Questions -->
+                        <div class="space-y-4">
+                            <h4 class="text-md font-semibold text-gray-900">Questões IVSF-10</h4>
+                            <template x-for="(question, index) in ivsf10Questions" :key="index">
+                                <div class="p-4 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-900 mb-3"
+                                        x-text="`${index + 1}. ${question.text}`"></p>
+                                    <div class="flex space-x-4">
+                                        <template x-for="option in question.options" :key="option.value">
+                                            <label class="flex items-center">
+                                                <input type="radio" :name="`ivsf_q${index}`" :value="option.value"
+                                                    x-model="evaluation.answers[index]" class="mr-2">
+                                                <span class="text-sm" x-text="option.label"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex space-x-4">
+                            <button type="button" @click="saveAsDraft()"
+                                class="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors">
+                                <i class="fas fa-save mr-2"></i>Salvar Rascunho
+                            </button>
+                            <button type="submit"
+                                class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                <i class="fas fa-check mr-2"></i>Finalizar Avaliação
+                            </button>
+                            <button type="button" @click="cancelEvaluation()"
+                                class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management Section (ADM SES only) -->
+        <div x-show="activeSection === 'users' && user.role === 'ADM_SES'" class="p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Gerenciamento de Usuários</h2>
+                <p class="text-gray-600">Aprovação e gerenciamento de usuários do sistema</p>
+            </div>
+
+            <!-- Pending Users -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Usuários Pendentes de Aprovação</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Nome</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Email</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">CPF</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Município</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Profissão</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Data</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-900">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="user in pendingUsers" :key="user.id">
+                                <tr class="border-b border-gray-100">
+                                    <td class="py-3 px-4" x-text="user.name"></td>
+                                    <td class="py-3 px-4" x-text="user.email"></td>
+                                    <td class="py-3 px-4" x-text="user.cpf"></td>
+                                    <td class="py-3 px-4" x-text="user.municipality"></td>
+                                    <td class="py-3 px-4" x-text="user.profession"></td>
+                                    <td class="py-3 px-4" x-text="formatDate(user.created_at)"></td>
+                                    <td class="py-3 px-4">
+                                        <button @click="approveUser(user.id)"
+                                            class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 mr-2">
+                                            Aprovar
+                                        </button>
+                                        <button @click="rejectUser(user.id)"
+                                            class="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
+                                            Rejeitar
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicators Section -->
+        <div x-show="activeSection === 'indicators'" class="p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Indicadores de Saúde</h2>
+                <p class="text-gray-600">Indicadores do Ministério da Saúde e eSUS</p>
+            </div>
+
+            <!-- Upload Indicators -->
+            <div x-show="user.role === 'ADM_SES'" class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Importar Indicadores</h3>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600 mb-4">Arraste arquivos aqui ou clique para selecionar</p>
+                    <input type="file" accept=".csv,.xlsx" class="hidden" id="indicatorsFile">
+                    <button onclick="document.getElementById('indicatorsFile').click()"
+                        class="bg-ms-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Selecionar Arquivo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Indicators List -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Indicadores Disponíveis</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template x-for="indicator in indicators" :key="indicator.id">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h4 class="font-medium text-gray-900 mb-2" x-text="indicator.title"></h4>
+                            <p class="text-sm text-gray-600 mb-3" x-text="indicator.description"></p>
+                            <div class="flex items-center justify-between">
+                                <span class="text-lg font-bold text-ms-blue"
+                                    x-text="indicator.value + ' ' + indicator.unit"></span>
+                                <span class="text-xs text-gray-500" x-text="indicator.period"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals and Overlays -->
+    <!-- Login Modal (if not authenticated) -->
+    <div x-show="!authenticated" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl p-8 w-full max-w-md mx-4">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-ms-blue rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user-friends text-white text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900">MSIdoso</h2>
+                <p class="text-gray-600">Sistema de Avaliação do Idoso</p>
+            </div>
+
+            <form @submit.prevent="login()" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">CPF</label>
+                    <input x-model="loginForm.cpf" type="text" required x-mask="999.999.999-99"
+                        placeholder="000.000.000-00"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cpf-mask">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+                    <input x-model="loginForm.password" type="password" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit"
+                    class="w-full bg-ms-blue text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <a href="#" @click="showRegisterForm = true" class="text-ms-blue hover:text-blue-700">
+                    Não tem conta? Cadastre-se
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div x-show="showRegisterForm"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl p-8 w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Cadastro de Usuário</h2>
+
+            <form @submit.prevent="register()" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nome Completo *</label>
+                        <input x-model="registerForm.name" type="text" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                        <input x-model="registerForm.email" type="email" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CPF *</label>
+                        <input x-model="registerForm.cpf" type="text" required x-mask="999.999.999-99"
+                            placeholder="000.000.000-00"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cpf-mask">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Município *</label>
+                        <select x-model="registerForm.municipality" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Selecione o município</option>
+                            <template x-for="municipality in municipalities" :key="municipality.id">
+                                <option :value="municipality.id" x-text="municipality.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Profissão *</label>
+                        <select x-model="registerForm.profession" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Selecione a profissão</option>
+                            <option value="medico">Médico</option>
+                            <option value="enfermeiro">Enfermeiro</option>
+                            <option value="tecnico_enfermagem">Técnico em Enfermagem</option>
+                            <option value="fisioterapeuta">Fisioterapeuta</option>
+                            <option value="psicologo">Psicólogo</option>
+                            <option value="assistente_social">Assistente Social</option>
+                            <option value="acs">Agente Comunitário de Saúde</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                    <div x-show="registerForm.profession !== 'acs' && registerForm.profession !== ''">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Registro Profissional</label>
+                        <input x-model="registerForm.professional_registry" type="text"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Senha *</label>
+                        <input x-model="registerForm.password" type="password" required minlength="8"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar Senha *</label>
+                        <input x-model="registerForm.password_confirmation" type="password" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit"
+                        class="flex-1 bg-ms-blue text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Cadastrar
+                    </button>
+                    <button type="button" @click="showRegisterForm = false"
+                        class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <script src="assets/js/app.js" defer></script>
+    <script src="assets/js/main.js" defer></script>
+    <script src="assets/js/cadastroprofissional.js" defer></script>
+</body>
+
+</html>

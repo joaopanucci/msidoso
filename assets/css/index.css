@@ -1,0 +1,5 @@
+.sidebar-transition { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .ms-green { background-color: #2d5016; }
+        .ms-yellow { background-color: #f4c430; }

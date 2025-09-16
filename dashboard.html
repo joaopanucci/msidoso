@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MSIdoso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit, } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+
+        // Firebase configuration (replace with your config)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCrtBxvIcacNY5bsnL1yJ-1atWYkccilk",
+            authDomain: "msidoso.firebaseapp.com",
+            projectId: "msidoso",
+            storageBucket: "msidoso.firebasestorage.app",
+            messagingSenderId: "251928338091",
+            appId: "1:251928338091:web:9dd6f45787aab0ee85e1ee",
+            measurementId: "G-9JKWL7536W"
+        };
+
+        try {
+            console.log('🔄 Inicializando Firebase...');
+
+            // Inicializar Firebase App
+            if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+                throw new Error('Configuração do Firebase inválida');
+            }
+            window.firebaseApp = initializeApp(firebaseConfig);
+            console.log('✅ Firebase App inicializado');
+
+            // Inicializar Firestore
+            window.db = getFirestore(window.firebaseApp);
+            if (!window.db) {
+                throw new Error('Erro ao inicializar Firestore');
+            }
+            console.log('✅ Firestore inicializado');
+
+            // Inicializar Authentication
+            window.auth = getAuth(window.firebaseApp);
+            if (!window.auth) {
+                throw new Error('Erro ao inicializar Authentication');
+            }
+            console.log('✅ Authentication inicializado');
+
+            // Exportar módulos
+            window.firebaseModules = {
+                collection,
+                getDocs,
+                query,
+                where,
+                orderBy,
+                limit,
+                onAuthStateChanged,
+                signOut
+            };
+
+            // Verificar se todos os módulos foram exportados
+            const requiredModules = ['collection', 'getDocs', 'query', 'where', 'orderBy', 'limit'];
+            const missingModules = requiredModules.filter(module => !window.firebaseModules[module]);
+
+            if (missingModules.length > 0) {
+                throw new Error(`Módulos faltando: ${missingModules.join(', ')}`);
+            }
+            console.log('✅ Módulos Firebase exportados globalmente');
+
+            // Dispatch custom event
+            window.dispatchEvent(new CustomEvent('firebaseReady'));
+            console.log('🚀 Firebase está pronto para uso!');
+        } catch (error) {
+            console.error('❌ Erro ao inicializar Firebase:', error);
+            window.addEventListener('DOMContentLoaded', () => {
+                try {
+                    const loading = document.getElementById('loadingScreen');
+                    const authReq = document.getElementById('authRequired');
+                    if (loading) loading.classList.add('hidden');
+                    if (authReq) {
+                        authReq.classList.remove('hidden');
+                        const p = authReq.querySelector('p');
+                        if (p) p.textContent = 'Erro ao conectar com o Firebase. Por favor, recarregue a página.';
+                    }
+                } catch (e) { console.error(e); }
+            });
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Enhanced Interactive Styles */
+        .filter-tag {
+            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .filter-tag .remove-tag {
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .filter-tag .remove-tag:hover {
+            opacity: 1;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
+        }
+
+        .interactive-button {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .interactive-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .interactive-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .chart-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .bounce {
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateY(0);
+            }
+
+            40% {
+                transform: translateY(-10px);
+            }
+
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .scale-in {
+            animation: scaleIn 0.3s ease-out;
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-gray-600">Carregando dashboard...</p>
+        </div>
+    </div>
+
+    <!-- Authentication Required Message -->
+    <div id="authRequired" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-xl text-center max-w-md">
+            <i class="fas fa-lock text-4xl text-red-500 mb-4"></i>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Acesso Restrito</h3>
+            <p class="text-gray-600 mb-4">Você precisa estar autenticado para acessar o dashboard.</p>
+            <button onclick="redirectToLogin()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors">
+                Fazer Login
+            </button>
+        </div>
+    </div>
+
+    <div id="header-placeholder"></div>
+
+    <main id="dashboardContent" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 hidden">
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Bem-vindo ao Dashboard</h2>
+                    <p class="text-gray-600">Visão geral do sistema de monitoramento de idosos - <span
+                            id="currentDate"></span></p>
+                </div>
+                <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <i class="fas fa-sync-alt cursor-pointer hover:text-blue-600 transition-colors"
+                        id="refreshIcon"></i>
+                    <span>Última atualização: <span id="lastUpdate">--:--</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Filters Section -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-filter text-blue-600"></i>
+                    <h3 class="text-lg font-semibold text-gray-900">Filtros</h3>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-4 flex-1 lg:max-w-4xl">
+                    <!-- Municipality Filter -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Município</label>
+                        <div class="relative">
+                            <select id="municipalityFilter"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <option value="">Todos os Municípios</option>
+                                <option value="Agua Clara">Água Clara</option>
+                                <option value="Alcinopolis">Alcinópolis</option>
+                                <option value="Amambai">Amambai</option>
+                                <option value="Anastacio">Anastácio</option>
+                                <option value="Anaurilandia">Anaurilândia</option>
+                                <option value="Angelica">Angélica</option>
+                                <option value="Antonio Joao">Antônio João</option>
+                                <option value="Aparecida do Taboado">Aparecida do Taboado</option>
+                                <option value="Aquidauana">Aquidauana</option>
+                                <option value="Aral Moreira">Aral Moreira</option>
+                                <option value="Bandeirantes">Bandeirantes</option>
+                                <option value="Bataguassu">Bataguassu</option>
+                                <option value="Bataypora">Batayporã</option>
+                                <option value="Bela Vista">Bela Vista</option>
+                                <option value="Bodoquena">Bodoquena</option>
+                                <option value="Bonito">Bonito</option>
+                                <option value="Brasilandia">Brasilândia</option>
+                                <option value="Caarapo">Caarapó</option>
+                                <option value="Camapua">Camapuã</option>
+                                <option value="Campo Grande">Campo Grande</option>
+                                <option value="Caracol">Caracol</option>
+                                <option value="Cassilandia">Cassilândia</option>
+                                <option value="Chapadao do Sul">Chapadão do Sul</option>
+                                <option value="Corguinho">Corguinho</option>
+                                <option value="Coronel Sapucaia">Coronel Sapucaia</option>
+                                <option value="Corumba">Corumbá</option>
+                                <option value="Costa Rica">Costa Rica</option>
+                                <option value="Coxim">Coxim</option>
+                                <option value="Deodapolis">Deodápolis</option>
+                                <option value="Dois Irmaos do Buriti">Dois Irmãos do Buriti</option>
+                                <option value="Douradina">Douradina</option>
+                                <option value="Dourados">Dourados</option>
+                                <option value="Eldorado">Eldorado</option>
+                                <option value="Fatima do Sul">Fátima do Sul</option>
+                                <option value="Figueirao">Figueirão</option>
+                                <option value="Gloria de Dourados">Glória de Dourados</option>
+                                <option value="Guia Lopes da Laguna">Guia Lopes da Laguna</option>
+                                <option value="Iguatemi">Iguatemi</option>
+                                <option value="Inocencia">Inocência</option>
+                                <option value="Itapora">Itaporã</option>
+                                <option value="Itaquirai">Itaquiraí</option>
+                                <option value="Ivinhema">Ivinhema</option>
+                                <option value="Japora">Japorã</option>
+                                <option value="Jaraguari">Jaraguari</option>
+                                <option value="Jardim">Jardim</option>
+                                <option value="Jatei">Jateí</option>
+                                <option value="Juti">Juti</option>
+                                <option value="Ladario">Ladário</option>
+                                <option value="Laguna Carapa">Laguna Carapã</option>
+                                <option value="Maracaju">Maracaju</option>
+                                <option value="Miranda">Miranda</option>
+                                <option value="Mundo Novo">Mundo Novo</option>
+                                <option value="Navirai">Naviraí</option>
+                                <option value="Nioaque">Nioaque</option>
+                                <option value="Nova Alvorada do Sul">Nova Alvorada do Sul</option>
+                                <option value="Nova Andradina">Nova Andradina</option>
+                                <option value="Novo Horizonte do Sul">Novo Horizonte do Sul</option>
+                                <option value="Paranaiba">Paranaíba</option>
+                                <option value="Paranhos">Paranhos</option>
+                                <option value="Pedro Gomes">Pedro Gomes</option>
+                                <option value="Ponta Pora">Ponta Porã</option>
+                                <option value="Porto Murtinho">Porto Murtinho</option>
+                                <option value="Ribas do Rio Pardo">Ribas do Rio Pardo</option>
+                                <option value="Rio Brilhante">Rio Brilhante</option>
+                                <option value="Rio Negro">Rio Negro</option>
+                                <option value="Rio Verde de Mato Grosso">Rio Verde de Mato Grosso</option>
+                                <option value="Rochedo">Rochedo</option>
+                                <option value="Santa Rita do Pardo">Santa Rita do Pardo</option>
+                                <option value="Sao Gabriel do Oeste">São Gabriel do Oeste</option>
+                                <option value="Selviria">Selvíria</option>
+                                <option value="Sete Quedas">Sete Quedas</option>
+                                <option value="Sidrolandia">Sidrolândia</option>
+                                <option value="Sonora">Sonora</option>
+                                <option value="Tacuru">Tacuru</option>
+                                <option value="Taquarussu">Taquarussu</option>
+                                <option value="Terenos">Terenos</option>
+                                <option value="Tres Lagoas">Três Lagoas</option>
+                                <option value="Vicentina">Vicentina</option>
+                            </select>
+                            <i class="fas fa-map-marker-alt absolute right-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                        <select id="dateRangeFilter"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="30" selected>Últimos 30 dias</option>
+                            <option value="90">Últimos 3 meses</option>
+                            <option value="365">Último ano</option>
+                            <option value="all">Todo período</option>
+                        </select>
+                    </div>
+
+                    <!-- Risk Level Filter -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nível de Risco</label>
+                        <select id="riskLevelFilter"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <option value="">Todos os níveis</option>
+                            <option value="baixo">Baixo Risco</option>
+                            <option value="medio">Médio Risco</option>
+                            <option value="alto">Alto Risco</option>
+                        </select>
+                    </div>
+
+                    <!-- Apply Filters Button -->
+                    <div class="flex items-end">
+                        <button id="applyFiltersBtn"
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center space-x-2 whitespace-nowrap">
+                            <i class="fas fa-search"></i>
+                            <span>Aplicar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Filters Display -->
+            <div id="activeFilters" class="mt-4 hidden">
+                <div class="flex items-center space-x-2 text-sm">
+                    <span class="text-gray-600">Filtros ativos:</span>
+                    <div id="activeFilterTags" class="flex flex-wrap gap-2"></div>
+                    <button id="clearFiltersBtn" class="text-red-600 hover:text-red-800 ml-2">
+                        <i class="fas fa-times"></i> Limpar filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Indicators Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Pacientes Card -->
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover border-l-4 border-blue-500 stat-card cursor-pointer"
+                onclick="showPatientDetails(e)">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Pacientes</p>
+                        <p id="totalPatients" class="text-3xl font-bold text-gray-900 transition-all duration-300">
+                            <span class="loading-spinner inline-block"></span>
+                        </p>
+                        <p id="newPatientsToday" class="text-sm text-green-600 mt-1">
+                            <i class="fas fa-arrow-up bounce"></i> Carregando...
+                        </p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full transition-transform duration-300 hover:scale-110">
+                        <i class="fas fa-users text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span id="patientsGrowth">Crescimento: --</span>
+                        <span id="patientsCity">Município: --</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Avaliações Card -->
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover border-l-4 border-green-500 stat-card cursor-pointer"
+                onclick="showEvaluationDetails(e)">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Avaliações</p>
+                        <p id="totalEvaluations" class="text-3xl font-bold text-gray-900 transition-all duration-300">
+                            <span class="loading-spinner inline-block"></span>
+                        </p>
+                        <p id="newEvaluationsToday" class="text-sm text-green-600 mt-1">
+                            <i class="fas fa-arrow-up bounce"></i> Carregando...
+                        </p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full transition-transform duration-300 hover:scale-110">
+                        <i class="fas fa-clipboard-check text-green-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span id="evaluationsGrowth">Crescimento: --</span>
+                        <span id="evaluationsCompleted">Concluídas: --</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profissionais Card -->
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover border-l-4 border-purple-500 stat-card cursor-pointer"
+                onclick="showProfessionalDetails(e)">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Profissionais</p>
+                        <p id="totalProfessionals" class="text-3xl font-bold text-gray-900 transition-all duration-300">
+                            <span class="loading-spinner inline-block"></span>
+                        </p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <i class="fas fa-circle text-green-400 text-xs"></i> Usuários ativos
+                        </p>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full transition-transform duration-300 hover:scale-110">
+                        <i class="fas fa-user-md text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span id="professionalsOnline">Online: --</span>
+                        <span id="professionalsRole">Médicos: --</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vulnerabilidade Card -->
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover border-l-4 border-red-500 stat-card cursor-pointer"
+                onclick="showRiskDetails(e)">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Alto Risco</p>
+                        <p id="highRiskPatients" class="text-3xl font-bold text-gray-900 transition-all duration-300">
+                            <span class="loading-spinner inline-block"></span>
+                        </p>
+                        <p class="text-sm text-red-600 mt-1">
+                            <i class="fas fa-exclamation-triangle bounce"></i> Atenção
+                        </p>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-full transition-transform duration-300 hover:scale-110">
+                        <i class="fas fa-shield-alt text-red-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span id="riskTrend">Tendência: --</span>
+                        <span id="riskUrgent">Urgente: --</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Avaliações por Tipo -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Avaliações por Tipo</h3>
+                <div class="chart-container">
+                    <canvas id="evaluationChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tendência de Novos Pacientes -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Novos Pacientes (Últimos 7 dias)</h3>
+                <div class="chart-container">
+                    <canvas id="patientsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Lists Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Pacientes Recentes -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Pacientes Recentes</h3>
+                <div id="recentPatients" class="space-y-3">
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                </div>
+                <button class="w-full mt-4 text-blue-600 hover:text-blue-800 font-medium">Ver todos</button>
+            </div>
+
+            <!-- Avaliações Recentes -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Avaliações Recentes</h3>
+                <div id="recentEvaluations" class="space-y-3">
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                </div>
+                <button class="w-full mt-4 text-green-600 hover:text-green-800 font-medium">Ver todas</button>
+            </div>
+
+            <!-- Próximas Consultas -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Próximas Consultas</h3>
+                <div id="upcomingAppointments" class="space-y-3">
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                    <div class="pulse bg-gray-200 h-16 rounded-lg"></div>
+                </div>
+                <button class="w-full mt-4 text-purple-600 hover:text-purple-800 font-medium">Ver agenda</button>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Ações Rápidas</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="addPatientBtn"
+                    class="flex items-center space-x-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group">
+                    <div class="bg-blue-500 p-3 rounded-full group-hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-user-plus text-white"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-medium text-gray-900">Cadastrar Paciente</p>
+                        <p class="text-sm text-gray-500">Adicionar novo paciente</p>
+                    </div>
+                </button>
+
+                <button id="newEvaluationBtn"
+                    class="flex items-center space-x-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors group">
+                    <div class="bg-green-500 p-3 rounded-full group-hover:bg-green-600 transition-colors">
+                        <i class="fas fa-clipboard-list text-white"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-medium text-gray-900">Nova Avaliação</p>
+                        <p class="text-sm text-gray-500">Iniciar avaliação</p>
+                    </div>
+                </button>
+
+                <button id="manageUsersBtn"
+                    class="flex items-center space-x-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group">
+                    <div class="bg-purple-500 p-3 rounded-full group-hover:bg-purple-600 transition-colors">
+                        <i class="fas fa-users-cog text-white"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-medium text-gray-900">Gerenciar Usuários</p>
+                        <p class="text-sm text-gray-500">Administrar profissionais</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Global variables
+        let evaluationChart = null;
+        let patientsChart = null;
+        let updateInterval = null;
+        let currentUser = null;
+        let currentFilters = {
+            municipality: '',
+            dateRange: '30',
+            riskLevel: ''
+        };
+
+        // Configuration
+        const CONFIG = {
+            updateInterval: 5 * 60 * 1000, // 5 minutes
+            itemsPerList: 5,
+            chartPeriod: 7, // days
+            colors: {
+                patients: '#3B82F6',
+                evaluations: '#10B981',
+                professionals: '#8B5CF6',
+                alerts: '#EF4444'
+            }
+        };
+
+        // Authentication check
+        function initializeAuth() {
+            const { onAuthStateChanged } = window.firebaseModules;
+
+            onAuthStateChanged(window.auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('userDisplayName').textContent = user.displayName || user.email;
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('dashboardContent').classList.remove('hidden');
+                    document.getElementById('dashboardContent').classList.add('fade-in');
+                    initializeDashboard();
+                } else {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('authRequired').classList.remove('hidden');
+                }
+            });
+        }
+
+        // Redirect to login
+        function redirectToLogin() {
+            window.location.href = 'login.html';
+        }
+
+        // Logout function
+        function logout() {
+            const { signOut } = window.firebaseModules;
+            signOut(window.auth).then(() => {
+                console.log('Usuário deslogado com sucesso');
+            }).catch((error) => {
+                console.error('Erro ao fazer logout:', error);
+            });
+        }
+
+        // Initialize dashboard
+        async function initializeDashboard() {
+            console.log('🚀 Iniciando dashboard...');
+
+            // Set current date first
+            setCurrentDate();
+
+            try {
+                console.log('✅ Conexão com Firestore será testada ao carregar os dados');
+
+                // Initialize components
+                await loadDashboardData();
+                setupEventListeners();
+                startAutoUpdate();
+
+                console.log('✅ Dashboard inicializado com sucesso!');
+            } catch (error) {
+                console.error('❌ Erro ao inicializar dashboard:', error);
+                showErrorMessage('Erro ao carregar dados. Verifique sua conexão.');
+
+                // Still setup listeners even if initial load fails
+                setupEventListeners();
+                startAutoUpdate();
+            }
+        }
+
+        // Set current date
+        function setCurrentDate() {
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                console.log('📊 Iniciando carregamento de dados...');
+                updateLastUpdateTime();
+
+                // Verificar se temos acesso aos módulos do Firebase
+                const { collection, getDocs } = window.firebaseModules;
+                if (!collection || !getDocs) {
+                    throw new Error('Módulos do Firebase não estão disponíveis');
+                }
+
+                console.log('🔍 Verificando conexão com o Firestore...');
+                // Testar conexão com o Firestore
+                const testQuery = await getDocs(collection(window.db, 'pacientes'));
+                console.log(`✅ Conexão testada - ${testQuery.size} documentos encontrados`);
+
+                // Load data in parallel for better performance
+                console.log('🔄 Carregando dados em paralelo...');
+                const [
+                    patientsData,
+                    evaluationsData,
+                    professionalsData,
+                    vulnerabilityData
+                ] = await Promise.all([
+                    loadPatientsData(),
+                    loadEvaluationsData(),
+                    loadProfessionalsData(),
+                    loadVulnerabilityData()
+                ]);
+
+                // Update UI with loaded data
+                updateStatistics(patientsData, evaluationsData, professionalsData, vulnerabilityData);
+                updateCharts(evaluationsData, patientsData);
+                updateRecentLists(patientsData, evaluationsData);
+
+            } catch (error) {
+                console.error('Erro ao carregar dados do dashboard:', error);
+                showErrorMessage('Erro ao carregar dados. Tentando novamente...');
+            }
+        }
+
+        // Load patients data from Firestore with filters
+        async function loadPatientsData() {
+            try {
+                console.log('👥 Carregando dados de pacientes...');
+
+                // Verificar se temos os módulos necessários
+                const { collection, getDocs, query, where, orderBy, limit } = window.firebaseModules;
+                if (!collection || !getDocs || !query || !where || !orderBy || !limit) {
+                    throw new Error('Módulos do Firebase necessários não encontrados');
+                }
+
+                // Verificar se temos acesso ao Firestore
+                if (!window.db) {
+                    throw new Error('Firestore não está inicializado');
+                }
+
+                // Build base query with filters
+                let baseQuery = collection(window.db, 'pacientes');
+                let queryConstraints = [];
+
+                console.log('🔍 Aplicando filtros:', currentFilters);
+
+                // Apply municipality filter
+                if (currentFilters.municipality) {
+                    queryConstraints.push(where('municipio', '==', currentFilters.municipality));
+                }
+
+                // Apply date range filter
+                if (currentFilters.dateRange !== 'all') {
+                    const daysAgo = parseInt(currentFilters.dateRange);
+                    const filterDate = new Date();
+                    filterDate.setDate(filterDate.getDate() - daysAgo);
+                    queryConstraints.push(where('dataCadastro', '>=', filterDate));
+                }
+
+                // Get total patients with filters
+                const filteredQuery = queryConstraints.length > 0 ?
+                    query(baseQuery, ...queryConstraints) : baseQuery;
+                const patientsSnapshot = await getDocs(filteredQuery);
+                const totalPatients = patientsSnapshot.size;
+
+                // Get today's patients
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                let todayConstraints = [where('dataCadastro', '>=', today)];
+                if (currentFilters.municipality) {
+                    todayConstraints.push(where('municipio', '==', currentFilters.municipality));
+                }
+
+                const todayQuery = query(baseQuery, ...todayConstraints);
+                const todaySnapshot = await getDocs(todayQuery);
+                const newPatientsToday = todaySnapshot.size;
+
+                // Get recent patients with filters
+                let recentConstraints = [orderBy('dataCadastro', 'desc'), limit(CONFIG.itemsPerList)];
+                if (currentFilters.municipality) {
+                    recentConstraints.unshift(where('municipio', '==', currentFilters.municipality));
+                }
+
+                const recentQuery = query(baseQuery, ...recentConstraints);
+                const recentSnapshot = await getDocs(recentQuery);
+                const recentPatients = recentSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Get trend data
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+                let trendConstraints = [where('dataCadastro', '>=', sevenDaysAgo), orderBy('dataCadastro', 'asc')];
+                if (currentFilters.municipality) {
+                    trendConstraints.unshift(where('municipio', '==', currentFilters.municipality));
+                }
+
+                const trendQuery = query(baseQuery, ...trendConstraints);
+                const trendSnapshot = await getDocs(trendQuery);
+                const trendData = processTrendData(trendSnapshot.docs);
+
+                // Calculate growth percentage
+                const lastWeekPatients = trendData.reduce((a, b) => a + b, 0);
+                const growthPercentage = lastWeekPatients > 0 ?
+                    ((newPatientsToday / lastWeekPatients) * 100).toFixed(1) : 0;
+
+                return {
+                    total: totalPatients,
+                    newToday: newPatientsToday,
+                    recent: recentPatients,
+                    trend: trendData,
+                    growth: growthPercentage,
+                    topMunicipality: await getTopMunicipality('pacientes')
+                };
+            } catch (error) {
+                console.error('Erro ao carregar dados de pacientes:', error);
+                return { total: 0, newToday: 0, recent: [], trend: [], growth: 0, topMunicipality: '--' };
+            }
+        }
+
+        // Load evaluations data from Firestore
+        async function loadEvaluationsData() {
+            const { collection, getDocs, query, where, orderBy, limit } = window.firebaseModules;
+
+            try {
+                // Get total evaluations
+                const evaluationsSnapshot = await getDocs(collection(window.db, 'avaliacoes'));
+                const totalEvaluations = evaluationsSnapshot.size;
+
+                // Get today's evaluations
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const todayQuery = query(
+                    collection(window.db, 'avaliacoes'),
+                    where('dataAvaliacao', '>=', today)
+                );
+                const todaySnapshot = await getDocs(todayQuery);
+                const newEvaluationsToday = todaySnapshot.size;
+
+                // Get recent evaluations
+                const recentQuery = query(
+                    collection(window.db, 'avaliacoes'),
+                    orderBy('dataAvaliacao', 'desc'),
+                    limit(CONFIG.itemsPerList)
+                );
+                const recentSnapshot = await getDocs(recentQuery);
+                const recentEvaluations = recentSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Process evaluation types
+                const evaluationTypes = processEvaluationTypes(evaluationsSnapshot.docs);
+
+                return {
+                    total: totalEvaluations,
+                    newToday: newEvaluationsToday,
+                    recent: recentEvaluations,
+                    types: evaluationTypes
+                };
+            } catch (error) {
+                console.error('Erro ao carregar dados de avaliações:', error);
+                return { total: 0, newToday: 0, recent: [], types: {} };
+            }
+        }
+
+        // Load professionals data from Firestore
+        async function loadProfessionalsData() {
+            const { collection, getDocs } = window.firebaseModules;
+
+            try {
+                const professionalsSnapshot = await getDocs(collection(window.db, 'usuarios'));
+                return professionalsSnapshot.size;
+            } catch (error) {
+                console.error('Erro ao carregar dados de profissionais:', error);
+                return 0;
+            }
+        }
+
+        // Load vulnerability data from Firestore
+        async function loadVulnerabilityData() {
+            const { collection, getDocs, query, where } = window.firebaseModules;
+
+            try {
+                const highRiskQuery = query(
+                    collection(window.db, 'vulnerabilidade'),
+                    where('nivelRisco', '==', 'alto')
+                );
+                const highRiskSnapshot = await getDocs(highRiskQuery);
+                return highRiskSnapshot.size;
+            } catch (error) {
+                console.error('Erro ao carregar dados de vulnerabilidade:', error);
+                return 0;
+            }
+        }
+
+        // Process trend data for charts
+        function processTrendData(docs) {
+            const trendData = Array(7).fill(0);
+            const today = new Date();
+
+            docs.forEach(doc => {
+                const docDate = doc.data().dataCadastro.toDate();
+                const daysDiff = Math.floor((today - docDate) / (1000 * 60 * 60 * 24));
+                if (daysDiff >= 0 && daysDiff < 7) {
+                    trendData[6 - daysDiff]++;
+                }
+            });
+
+            return trendData;
+        }
+
+        // Process evaluation types for chart
+        function processEvaluationTypes(docs) {
+            const types = {
+                'Inicial': 0,
+                'Seguimento': 0,
+                'Reavaliação': 0,
+                'Alta': 0,
+                'IVCF-20': 0,
+                'IVSF-10': 0
+            };
+
+            docs.forEach(doc => {
+                const tipo = doc.data().tipo;
+                if (types.hasOwnProperty(tipo)) {
+                    types[tipo]++;
+                }
+            });
+
+            return types;
+        }
+
+        // Helper function to get top municipality
+        async function getTopMunicipality(collection) {
+            try {
+                const { getDocs, collection: firestoreCollection } = window.firebaseModules;
+                const snapshot = await getDocs(firestoreCollection(window.db, collection));
+
+                const municipalityCounts = {};
+                snapshot.docs.forEach(doc => {
+                    const municipio = doc.data().municipio || 'Não informado';
+                    municipalityCounts[municipio] = (municipalityCounts[municipio] || 0) + 1;
+                });
+
+                const topMunicipality = Object.keys(municipalityCounts).reduce((a, b) =>
+                    municipalityCounts[a] > municipalityCounts[b] ? a : b, 'Campo Grande');
+
+                return topMunicipality;
+            } catch (error) {
+                return 'Campo Grande';
+            }
+        }
+
+        // Update statistics cards with enhanced data
+        function updateStatistics(patientsData, evaluationsData, professionalsData, vulnerabilityData) {
+            // Animate number changes
+            animateNumber('totalPatients', patientsData.total);
+            animateNumber('totalEvaluations', evaluationsData.total);
+            animateNumber('totalProfessionals', professionalsData);
+            animateNumber('highRiskPatients', vulnerabilityData);
+
+            // Update growth indicators
+            document.getElementById('newPatientsToday').innerHTML = `<i class="fas fa-arrow-up bounce"></i> +${patientsData.newToday} hoje`;
+            document.getElementById('newEvaluationsToday').innerHTML = `<i class="fas fa-arrow-up bounce"></i> +${evaluationsData.newToday} hoje`;
+
+            // Update additional metrics
+            document.getElementById('patientsGrowth').textContent = `Crescimento: +${patientsData.growth}%`;
+            document.getElementById('patientsCity').textContent = `Município: ${patientsData.topMunicipality}`;
+
+            document.getElementById('evaluationsGrowth').textContent = `Crescimento: +${evaluationsData.growth || 0}%`;
+            document.getElementById('evaluationsCompleted').textContent = `Concluídas: ${evaluationsData.completed || 0}`;
+
+            document.getElementById('professionalsOnline').textContent = `Online: ${Math.floor(professionalsData * 0.7)}`;
+            document.getElementById('professionalsRole').textContent = `Médicos: ${Math.floor(professionalsData * 0.4)}`;
+
+            document.getElementById('riskTrend').textContent = `Tendência: ${vulnerabilityData > 10 ? '↗️' : '↘️'}`;
+            document.getElementById('riskUrgent').textContent = `Urgente: ${Math.floor(vulnerabilityData * 0.3)}`;
+        }
+
+        // Animate number changes
+        function animateNumber(elementId, targetValue) {
+            const element = document.getElementById(elementId);
+            const currentValue = parseInt(element.textContent) || 0;
+            const increment = Math.ceil((targetValue - currentValue) / 20);
+
+            if (currentValue !== targetValue) {
+                const timer = setInterval(() => {
+                    const current = parseInt(element.textContent) || 0;
+                    if (current < targetValue) {
+                        element.textContent = Math.min(current + increment, targetValue).toLocaleString('pt-BR');
+                    } else {
+                        element.textContent = targetValue.toLocaleString('pt-BR');
+                        clearInterval(timer);
+                    }
+                }, 50);
+            } else {
+                element.textContent = targetValue.toLocaleString('pt-BR');
+            }
+        }
+
+        // Update charts
+        function updateCharts(evaluationsData, patientsData) {
+            // Evaluation types chart
+            const evaluationCtx = document.getElementById('evaluationChart').getContext('2d');
+
+            if (evaluationChart) {
+                evaluationChart.destroy();
+            }
+
+            const hasEvaluationData = Object.values(evaluationsData.types).some(value => value > 0);
+
+            evaluationChart = new Chart(evaluationCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(evaluationsData.types),
+                    datasets: [{
+                        label: 'Avaliações',
+                        data: hasEvaluationData ? Object.values(evaluationsData.types) : [1, 1, 1, 1, 1, 1],
+                        backgroundColor: hasEvaluationData ? [
+                            CONFIG.colors.patients,
+                            CONFIG.colors.evaluations,
+                            CONFIG.colors.professionals,
+                            '#F59E0B',
+                            CONFIG.colors.alerts,
+                            '#06B6D4'
+                        ] : ['#E5E7EB', '#E5E7EB', '#E5E7EB', '#E5E7EB', '#E5E7EB', '#E5E7EB'],
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#F3F4F6'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Patients trend chart
+            const patientsCtx = document.getElementById('patientsChart').getContext('2d');
+
+            if (patientsChart) {
+                patientsChart.destroy();
+            }
+
+            const labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+            const hasTrendData = patientsData.trend.some(value => value > 0);
+
+            patientsChart = new Chart(patientsCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Novos Pacientes',
+                        data: hasTrendData ? patientsData.trend : [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: hasTrendData ? CONFIG.colors.patients : '#E5E7EB',
+                        backgroundColor: hasTrendData ? `${CONFIG.colors.patients}20` : '#F9FAFB',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: hasTrendData ? CONFIG.colors.patients : '#E5E7EB',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#F3F4F6'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update recent lists
+        function updateRecentLists(patientsData, evaluationsData) {
+            // Recent patients
+            const recentPatientsContainer = document.getElementById('recentPatients');
+            recentPatientsContainer.innerHTML = '';
+
+            if (patientsData.recent.length === 0) {
+                recentPatientsContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-user-times text-3xl mb-2"></i>
+                        <p>Nenhum paciente recente</p>
+                    </div>
+                `;
+            } else {
+                patientsData.recent.forEach(patient => {
+                    const patientElement = createRecentPatientElement(patient);
+                    recentPatientsContainer.appendChild(patientElement);
+                });
+            }
+
+            // Recent evaluations
+            const recentEvaluationsContainer = document.getElementById('recentEvaluations');
+            recentEvaluationsContainer.innerHTML = '';
+
+            if (evaluationsData.recent.length === 0) {
+                recentEvaluationsContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-clipboard-times text-3xl mb-2"></i>
+                        <p>Nenhuma avaliação recente</p>
+                    </div>
+                `;
+            } else {
+                evaluationsData.recent.forEach(evaluation => {
+                    const evaluationElement = createRecentEvaluationElement(evaluation);
+                    recentEvaluationsContainer.appendChild(evaluationElement);
+                });
+            }
+
+            // Load upcoming appointments from Firebase
+            updateUpcomingAppointments();
+        }
+
+        // Create recent patient element
+        function createRecentPatientElement(patient) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-3 p-3 bg-gray-50 rounded-lg';
+
+            const timeAgo = getTimeAgo(patient.dataCadastro);
+
+            div.innerHTML = `
+                <div class="bg-blue-100 p-2 rounded-full">
+                    <i class="fas fa-user text-blue-600"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium text-gray-900">${patient.nome}</p>
+                    <p class="text-sm text-gray-500">${timeAgo}</p>
+                </div>
+            `;
+
+            return div;
+        }
+
+        // Create recent evaluation element
+        function createRecentEvaluationElement(evaluation) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-3 p-3 bg-gray-50 rounded-lg';
+
+            const timeAgo = getTimeAgo(evaluation.dataAvaliacao);
+
+            div.innerHTML = `
+                <div class="bg-green-100 p-2 rounded-full">
+                    <i class="fas fa-clipboard-check text-green-600"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium text-gray-900">${evaluation.tipo} - ${evaluation.pacienteNome}</p>
+                    <p class="text-sm text-gray-500">${timeAgo}</p>
+                </div>
+            `;
+
+            return div;
+        }
+
+        // Update upcoming appointments from Firebase
+        async function updateUpcomingAppointments() {
+            const { collection, getDocs, query, where, orderBy, limit } = window.firebaseModules;
+            const appointmentsContainer = document.getElementById('upcomingAppointments');
+
+            try {
+                // Get upcoming appointments from Firebase
+                const today = new Date();
+                const nextWeek = new Date();
+                nextWeek.setDate(today.getDate() + 7);
+
+                const appointmentsQuery = query(
+                    collection(window.db, 'consultas'),
+                    where('dataConsulta', '>=', today),
+                    where('dataConsulta', '<=', nextWeek),
+                    orderBy('dataConsulta', 'asc'),
+                    limit(CONFIG.itemsPerList)
+                );
+
+                const appointmentsSnapshot = await getDocs(appointmentsQuery);
+                appointmentsContainer.innerHTML = '';
+
+                if (appointmentsSnapshot.empty) {
+                    appointmentsContainer.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-calendar-times text-3xl mb-2"></i>
+                            <p>Nenhuma consulta agendada</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                appointmentsSnapshot.docs.forEach(doc => {
+                    const appointment = doc.data();
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center space-x-3 p-3 bg-gray-50 rounded-lg';
+
+                    const appointmentTime = formatAppointmentTime(appointment.dataConsulta);
+
+                    div.innerHTML = `
+                        <div class="bg-purple-100 p-2 rounded-full">
+                            <i class="fas fa-calendar text-purple-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-900">${appointment.pacienteNome}</p>
+                            <p class="text-sm text-gray-500">${appointmentTime}</p>
+                        </div>
+                    `;
+                    appointmentsContainer.appendChild(div);
+                });
+
+            } catch (error) {
+                console.error('Erro ao carregar consultas:', error);
+                appointmentsContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-exclamation-triangle text-3xl mb-2"></i>
+                        <p>Erro ao carregar consultas</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Get time ago string
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+
+            if (diffInHours < 1) return 'Há poucos minutos';
+            if (diffInHours < 24) return `Há ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`;
+
+            const diffInDays = Math.floor(diffInHours / 24);
+            if (diffInDays === 1) return 'Ontem';
+            if (diffInDays < 7) return `Há ${diffInDays} dias`;
+
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        // Format appointment time
+        function formatAppointmentTime(timestamp) {
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const appointmentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+            const timeString = date.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            if (appointmentDate.getTime() === today.getTime()) {
+                return `Hoje, ${timeString}`;
+            } else if (appointmentDate.getTime() === tomorrow.getTime()) {
+                return `Amanhã, ${timeString}`;
+            } else {
+                return `${date.toLocaleDateString('pt-BR')}, ${timeString}`;
+            }
+        }
+
+        // Update last update time
+        function updateLastUpdateTime() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Show error message with toast notification and retry button
+        function showErrorMessage(message, type = 'error') {
+            console[type === 'error' ? 'error' : 'warn'](message);
+
+            // Remove existing toast if any
+            const existingToast = document.querySelector('.toast-notification');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast-notification fixed bottom-4 right-4 ${type === 'error' ? 'bg-red-500' : 'bg-yellow-500'} text-white px-6 py-3 rounded-lg shadow-lg z-50 fade-in flex items-center space-x-2`;
+
+            // Adicionar botão de retry apenas para erros
+            const retryButton = type === 'error' ? `
+                <button class="ml-4 bg-white text-red-500 px-2 py-1 rounded hover:bg-red-100 transition-colors" onclick="retryLoad()">
+                    <i class="fas fa-sync-alt mr-1"></i>Tentar Novamente
+                </button>
+            ` : '';
+
+            toast.innerHTML = `
+                <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle'} mr-2"></i>
+                <span>${message}</span>
+                ${retryButton}
+                <button class="ml-4 hover:text-gray-200" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            document.body.appendChild(toast);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('fade-in');
+                    toast.classList.add('fade-out');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Filter management functions
+        function applyFilters() {
+            const municipality = document.getElementById('municipalityFilter').value;
+            const dateRange = document.getElementById('dateRangeFilter').value;
+            const riskLevel = document.getElementById('riskLevelFilter').value;
+
+            currentFilters = { municipality, dateRange, riskLevel };
+
+            updateActiveFilters();
+            loadDashboardData();
+
+            // Add loading animation to apply button
+            const applyBtn = document.getElementById('applyFiltersBtn');
+            applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Aplicando...</span>';
+
+            setTimeout(() => {
+                applyBtn.innerHTML = '<i class="fas fa-search"></i> <span>Aplicar</span>';
+            }, 1000);
+        }
+
+        function updateActiveFilters() {
+            const activeFiltersDiv = document.getElementById('activeFilters');
+            const activeFilterTags = document.getElementById('activeFilterTags');
+
+            activeFilterTags.innerHTML = '';
+
+            let hasActiveFilters = false;
+
+            if (currentFilters.municipality) {
+                hasActiveFilters = true;
+                const tag = createFilterTag('Município', currentFilters.municipality, 'municipality');
+                activeFilterTags.appendChild(tag);
+            }
+
+            if (currentFilters.dateRange !== '30') {
+                hasActiveFilters = true;
+                const dateLabels = {
+                    '7': 'Últimos 7 dias',
+                    '90': 'Últimos 3 meses',
+                    '365': 'Último ano',
+                    'all': 'Todo período'
+                };
+                const tag = createFilterTag('Período', dateLabels[currentFilters.dateRange], 'dateRange');
+                activeFilterTags.appendChild(tag);
+            }
+
+            if (currentFilters.riskLevel) {
+                hasActiveFilters = true;
+                const riskLabels = {
+                    'baixo': 'Baixo Risco',
+                    'medio': 'Médio Risco',
+                    'alto': 'Alto Risco'
+                };
+                const tag = createFilterTag('Risco', riskLabels[currentFilters.riskLevel], 'riskLevel');
+                activeFilterTags.appendChild(tag);
+            }
+
+            if (hasActiveFilters) {
+                activeFiltersDiv.classList.remove('hidden');
+                activeFiltersDiv.classList.add('slide-up');
+            } else {
+                activeFiltersDiv.classList.add('hidden');
+            }
+        }
+
+        function createFilterTag(label, value, filterType) {
+            const tag = document.createElement('div');
+            tag.className = 'filter-tag';
+            tag.innerHTML = `
+                <span>${label}: ${value}</span>
+                <i class="fas fa-times remove-tag" onclick="removeFilter('${filterType}')"></i>
+            `;
+            return tag;
+        }
+
+        function removeFilter(filterType) {
+            currentFilters[filterType] = filterType === 'dateRange' ? '30' : '';
+
+            // Update form controls
+            if (filterType === 'municipality') {
+                document.getElementById('municipalityFilter').value = '';
+            } else if (filterType === 'dateRange') {
+                document.getElementById('dateRangeFilter').value = '30';
+            } else if (filterType === 'riskLevel') {
+                document.getElementById('riskLevelFilter').value = '';
+            }
+
+            updateActiveFilters();
+            loadDashboardData();
+        }
+
+        function clearAllFilters() {
+            currentFilters = { municipality: '', dateRange: '30', riskLevel: '' };
+
+            document.getElementById('municipalityFilter').value = '';
+            document.getElementById('dateRangeFilter').value = '30';
+            document.getElementById('riskLevelFilter').value = '';
+
+            updateActiveFilters();
+            loadDashboardData();
+        }
+
+        // Card interaction functions
+        function showPatientDetails(e) {
+            // Add scale animation
+            e.currentTarget.classList.add('scale-in');
+            setTimeout(() => {
+                e.currentTarget.classList.remove('scale-in');
+            }, 300);
+
+            // Navigate to patients page with current filters
+            const params = new URLSearchParams(currentFilters);
+            window.location.href = `pacientes.html?${params.toString()}`;
+        }
+
+        function showEvaluationDetails(e) {
+            e.currentTarget.classList.add('scale-in');
+            setTimeout(() => {
+                e.currentTarget.classList.remove('scale-in');
+            }, 300);
+
+            const params = new URLSearchParams(currentFilters);
+            window.location.href = `avaliacoes.html?${params.toString()}`;
+        }
+
+        function showProfessionalDetails(e) {
+            e.currentTarget.classList.add('scale-in');
+            setTimeout(() => {
+                e.currentTarget.classList.remove('scale-in');
+            }, 300);
+
+            window.location.href = 'usuarios.html';
+        }
+
+        function showRiskDetails(e) {
+            e.currentTarget.classList.add('scale-in');
+            setTimeout(() => {
+                e.currentTarget.classList.remove('scale-in');
+            }, 300);
+
+            const params = new URLSearchParams({ ...currentFilters, riskLevel: 'alto' });
+            window.location.href = `indicevulnerabilidade.html?${params.toString()}`;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+
+            // Filter controls
+            document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+            document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
+
+            // Quick action buttons with enhanced animations
+            document.getElementById('addPatientBtn').addEventListener('click', (e) => {
+                e.currentTarget.classList.add('scale-in');
+                setTimeout(() => {
+                    window.location.href = 'pacientes.html';
+                }, 200);
+            });
+
+            document.getElementById('newEvaluationBtn').addEventListener('click', (e) => {
+                e.currentTarget.classList.add('scale-in');
+                setTimeout(() => {
+                    window.location.href = 'avaliacoes.html';
+                }, 200);
+            });
+
+            document.getElementById('manageUsersBtn').addEventListener('click', (e) => {
+                e.currentTarget.classList.add('scale-in');
+                setTimeout(() => {
+                    window.location.href = 'usuarios.html';
+                }, 200);
+            });
+
+            // Refresh icon click
+            document.getElementById('refreshIcon').addEventListener('click', () => {
+                document.getElementById('refreshIcon').classList.add('fa-spin');
+                loadDashboardData().finally(() => {
+                    document.getElementById('refreshIcon').classList.remove('fa-spin');
+                });
+            });
+
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key) {
+                        case 'r':
+                            e.preventDefault();
+                            document.getElementById('refreshIcon').click();
+                            break;
+                        case 'f':
+                            e.preventDefault();
+                            document.getElementById('municipalityFilter').focus();
+                            break;
+                    }
+                }
+            });
+        }
+
+        // Start auto update
+        function startAutoUpdate() {
+            updateInterval = setInterval(() => {
+                loadDashboardData();
+            }, CONFIG.updateInterval);
+        }
+
+        // Stop auto update
+        function stopAutoUpdate() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Wait for Firebase modules to load
+            setTimeout(initializeAuth, 1000);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopAutoUpdate();
+        });
+    </script>
+    <script src="assets/js/main.js" defer></script>
+</body>
+
+</html>

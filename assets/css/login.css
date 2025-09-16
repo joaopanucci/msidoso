@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .form-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .slide-in {
+            animation: slideIn 0.4s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .input-focus:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+        }
